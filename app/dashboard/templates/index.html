@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BN Bot</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">BN Bot</span>
+        <h1>Painel administrativo</h1>
+        <p>Dados reais do servidor, sem atalhos visuais que escondam estado ou erro.</p>
+      </div>
+      {% if authenticated %}
+      <form action="/auth/logout" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button secondary" type="submit">Sair</button></form>
+      {% else %}
+      <a class="button" href="/auth/login">Entrar com Discord</a>
+      {% endif %}
+    </header>
+    {% if authenticated %}
+    <section class="toolbar">
+      <label for="guild">Servidor</label>
+      <select id="guild"></select>
+      <button id="refresh" class="button secondary" type="button">Atualizar</button>
+    </section>
+    <section id="status" class="status">Carregando...</section>
+    <section class="metrics" id="metrics"></section>
+    <section class="content-grid">
+      <article class="panel"><div class="panel-head"><h2>Atividade</h2><span id="range-label">7 dias</span></div><div id="activity" class="series"></div></article>
+      <article class="panel"><div class="panel-head"><h2>Configuração</h2></div><form id="settings" class="form"><label>Timezone<input name="timezone" required></label><label>Locale<input name="locale" required></label><button class="button" type="submit">Salvar</button></form></article>
+    </section>
+    <section class="panel automod-panel">
+      <div class="panel-head"><div><h2>AutoMod</h2><p>Proteções e regras ativas do servidor.</p></div></div>
+      <form id="automod-settings" class="form automod-form"><label><span>Estado</span><select name="enabled"><option value="true">Ativo</option><option value="false">Desativado</option></select></label><label><span>Ação da blacklist</span><select name="blacklist_action"><option value="delete">Excluir</option><option value="warn">Warn</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></label><button class="button" type="submit">Salvar AutoMod</button></form>
+      <div id="automod-rules" class="rule-list"></div>
+    </section>
+    <section class="community-grid">
+      <article class="panel community-panel"><div class="panel-head"><div><h2>Tickets</h2><p>Fila operacional e estado atual.</p></div></div><div id="tickets-list" class="data-list"></div></article>
+      <article class="panel community-panel"><div class="panel-head"><div><h2>Sugestões</h2><p>Votação e revisão da equipe.</p></div></div><div id="suggestions-list" class="data-list"></div></article>
+      <article class="panel community-panel"><div class="panel-head"><div><h2>Denúncias</h2><p>Casos registrados e resoluções.</p></div></div><div id="reports-list" class="data-list"></div></article>
+      <article class="panel community-panel"><div class="panel-head"><div><h2>Giveaways</h2><p>Eventos, elegibilidade e participantes.</p></div></div><div id="giveaways-list" class="data-list"></div></article>
+      <article class="panel community-panel"><div class="panel-head"><div><h2>Enquetes</h2><p>Estado e volume de votos.</p></div></div><div id="polls-list" class="data-list"></div></article>
+    </section>
+    {% else %}
+    <section class="empty"><h2>Administração real começa aqui.</h2><p>Faça login pelo Discord para acessar somente os servidores nos quais sua conta possui permissão administrativa.</p><a class="button" href="/auth/login">Conectar Discord</a></section>
+    {% endif %}
+  </main>
+  {% if authenticated %}<script src="/static/app.js"></script>{% endif %}
+</body>
+</html>

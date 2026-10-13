@@ -1,0 +1,11 @@
+{
+  "errors": {
+    "generic": "Não foi possível concluir esta operação.",
+    "permission": "Você não possui permissão para esta operação.",
+    "cooldown": "Aguarde o cooldown antes de tentar novamente.",
+    "not_found": "O recurso solicitado não existe.",
+    "invalid": "Os parâmetros fornecidos são inválidos.",
+    "balance": "Saldo insuficiente.",
+    "config": "Esta funcionalidade ainda não foi configurada neste servidor."
+  }
+}

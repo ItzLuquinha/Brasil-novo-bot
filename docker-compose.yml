@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: bn_bot
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - bn_postgres:/var/lib/postgresql/data
+  redis:
+    image: redis:8
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - bn_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+volumes:
+  bn_postgres:
+  bn_redis:
