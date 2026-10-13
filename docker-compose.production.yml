@@ -1,0 +1,144 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bn_bot
+      POSTGRES_USER: bn_bot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - bn_postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bn_bot -d bn_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - bn_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - backend
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    restart: "no"
+    environment: &app_environment
+      APP_ENV: production
+      APP_NAME: ${APP_NAME:-BN Bot}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?Set APP_SECRET_KEY in .env.production}
+      DISCORD_TOKEN: ${DISCORD_TOKEN:?Set DISCORD_TOKEN in .env.production}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?Set DISCORD_CLIENT_ID in .env.production}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:?Set DISCORD_CLIENT_SECRET in .env.production}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_REDIRECT_URI: https://${PUBLIC_DOMAIN:?Set PUBLIC_DOMAIN in .env.production}/api/v1/auth/callback
+      LEGACY_DISCORD_REDIRECT_URI: https://${PUBLIC_DOMAIN}/auth/callback
+      DATABASE_URL: postgresql+asyncpg://bn_bot:${POSTGRES_PASSWORD}@postgres:5432/bn_bot
+      REDIS_URL: redis://redis:6379/0
+      DASHBOARD_URL: https://${PUBLIC_DOMAIN}
+      CORS_ALLOWED_ORIGINS: https://${PUBLIC_DOMAIN}
+      AUTH_COOKIE_SAMESITE: lax
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SYSTEM_ADMIN_IDS: ${SYSTEM_ADMIN_IDS:-}
+      SYSTEM_MOD_IDS: ${SYSTEM_MOD_IDS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "main.py"]
+    restart: unless-stopped
+    init: true
+    environment: *app_environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    restart: unless-stopped
+    init: true
+    environment: *app_environment
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - frontend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:?Set PUBLIC_DOMAIN in .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - frontend
+
+volumes:
+  bn_postgres:
+  bn_redis:
+  caddy_data:
+  caddy_config:
+
+networks:
+  backend:
+  frontend:
